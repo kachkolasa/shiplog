@@ -2,6 +2,7 @@
 
 namespace App\Commands;
 
+use App\Services\GitLog;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Support\Carbon;
 use LaravelZero\Framework\Commands\Command;
@@ -30,13 +31,28 @@ class BriefCommand extends Command
     /**
      * Execute the console command.
      */
-    public function handle()
+    public function handle(GitLog $git): int
     {
         $repo = getcwd();
         $start = Carbon::parse($this->option('since'));
         $end = Carbon::parse($this->option('until'));
 
-        dd($start, $end, $repo);
+        if ($end->isStartOfDay()) {
+            $end = $end->endOfDay();
+        }
+
+        $git->ensureRepo($repo);
+        $author = $this->option('all-authors') ? null : $git->currentEmail($repo);
+        $commits = $git->commits($repo, $start, $end, $author);
+
+        if (empty($commits)) {
+            $this->warn("No commits between {$start->toFormattedDateString()} and {$end->toFormattedDateString()}.");
+            return self::SUCCESS;
+        }
+
+        render(json_encode($commits));
+
+        return self::SUCCESS;
     }
 
     /**
