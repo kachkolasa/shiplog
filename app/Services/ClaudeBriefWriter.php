@@ -3,10 +3,12 @@
 namespace App\Services;
 
 use Anthropic\Client;
+use Anthropic\Messages\Message;
 use Anthropic\Messages\Model;
 use Anthropic\Messages\StopReason;
 use App\Contracts\BriefWriter;
 use App\Data\BriefOptions;
+use App\Data\BriefUsage;
 use App\Data\ClientBrief;
 use Illuminate\Support\Collection;
 
@@ -86,7 +88,7 @@ final readonly class ClaudeBriefWriter implements BriefWriter
             throw new \RuntimeException('Anthropic API response does not match the expected results.');
         }
 
-        return $this->format($text->text);
+        return $this->format($text->text)->withUsage($this->usage($message));
     }
 
     private function format(string $text): ClientBrief
@@ -94,6 +96,16 @@ final readonly class ClaudeBriefWriter implements BriefWriter
         $content = json_decode($text, true);
 
         return ClientBrief::fromArray($content);
+    }
+
+    private function usage(Message $message): BriefUsage
+    {
+        return new BriefUsage(
+            model: $message->model,
+            inputTokens: $message->usage->inputTokens,
+            outputTokens: $message->usage->outputTokens,
+            cachedInputTokens: $message->usage->cacheReadInputTokens ?? 0,
+        );
     }
 
     private function resolveStopReason(?StopReason $reason): void

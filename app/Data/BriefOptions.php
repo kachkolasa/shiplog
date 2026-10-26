@@ -24,7 +24,7 @@ final class BriefOptions
         public readonly string $audience,
         public readonly string $tone,
         public readonly int $maxItems,
-        public readonly bool $deep = false,
+        public readonly bool $deep = true,
     ) {}
 
     public static function fromSettings(Settings $settings): self

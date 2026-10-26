@@ -186,7 +186,7 @@ it('refuses to run without credentials', function () {
     Process::assertNothingRan();
 });
 
-it('does not fetch patches unless --deep is passed', function () {
+it('does not fetch patches when the saved config says surface', function () {
     fakeGit(gitCommits());
     $writer = $this->app->make(BriefWriter::class);
 
@@ -213,4 +213,33 @@ it('sends diffs and tells the writer when --deep is passed', function () {
     expect($writer->deepRequested)->toBeTrue()
         ->and($writer->received)->toContain('```diff')
         ->and($writer->received)->toContain('+code');
+});
+
+it('defaults to deep for a config written before the key existed', function () {
+    // all() merges the file over DEFAULTS, so an older config with no "deep"
+    // key inherits the new default rather than silently staying shallow.
+    $directory = sys_get_temp_dir().'/shiplog-olddeep-'.bin2hex(random_bytes(6));
+    mkdir($directory, 0700, true);
+    file_put_contents(
+        $directory.'/config.json',
+        json_encode(['audience' => 'non-technical', 'tone' => 'first-person', 'max_items' => 6]),
+    );
+    $this->app->instance(Settings::class, new Settings($directory));
+
+    Process::fake([
+        "*'rev-parse'*" => Process::result('true'),
+        "*'config' 'user.email'*" => Process::result('dev@example.com'),
+        "*'--patch'*" => Process::result("\x1edeadbeefcafe0000000000000000000000000000\ndiff --git a/app/X.php b/app/X.php\n+code"),
+        "*'log'*" => Process::result(fakeGitLog(gitCommits())),
+    ]);
+
+    $writer = $this->app->make(BriefWriter::class);
+
+    $this->artisan('brief')->assertExitCode(0);
+
+    expect($writer->deepRequested)->toBeTrue()
+        ->and($writer->received)->toContain('```diff');
+
+    array_map('unlink', glob($directory.'/*') ?: []);
+    rmdir($directory);
 });

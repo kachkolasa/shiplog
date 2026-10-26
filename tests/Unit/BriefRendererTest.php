@@ -1,6 +1,7 @@
 <?php
 
 use App\Data\BriefItem;
+use App\Data\BriefUsage;
 use App\Data\ClientBrief;
 use App\Services\BriefRenderer;
 use Illuminate\Support\Carbon;
@@ -75,4 +76,56 @@ it('omits the vague-commit block when there is nothing to report', function () {
 
 it('escapes a vague commit subject too', function () {
     expect(renderBrief([], ['fix <script> tag']))->toContain('fix &lt;script&gt; tag');
+});
+
+it('says nothing about tokens when there is no usage', function () {
+    expect(renderBrief([briefItem()]))->not->toContain('tokens');
+});
+
+it('reports tokens and an estimated cost', function () {
+    $brief = new ClientBrief(headline: 'A week', items: [briefItem()], unclear: []);
+    $html = (new BriefRenderer)->render(
+        $brief->withUsage(new BriefUsage('claude-fable-5-1', inputTokens: 23_000, outputTokens: 1_200)),
+        Carbon::parse('2026-10-19'),
+        Carbon::parse('2026-10-26'),
+    );
+
+    expect($html)->toContain('23,000 tokens in, 1,200 out')
+        ->toContain('$0.29')
+        ->toContain('claude-fable-5-1');
+});
+
+it('shows more precision for a run that costs fractions of a cent', function () {
+    $brief = new ClientBrief(headline: 'A week', items: [], unclear: []);
+    $html = (new BriefRenderer)->render(
+        $brief->withUsage(new BriefUsage('claude-haiku-5-5', inputTokens: 20_000, outputTokens: 500)),
+        Carbon::parse('2026-10-19'),
+        Carbon::parse('2026-10-26'),
+    );
+
+    expect($html)->toContain('$0.0023');
+});
+
+it('says under a hundredth of a cent rather than printing zero', function () {
+    $brief = new ClientBrief(headline: 'A week', items: [], unclear: []);
+    $html = (new BriefRenderer)->render(
+        $brief->withUsage(new BriefUsage('claude-haiku-5-5', inputTokens: 200, outputTokens: 50)),
+        Carbon::parse('2026-10-19'),
+        Carbon::parse('2026-10-26'),
+    );
+
+    expect($html)->toContain('under $0.0001')
+        ->not->toContain('$0.0000');
+});
+
+it('omits the cost but keeps the tokens for an unknown model', function () {
+    $brief = new ClientBrief(headline: 'A week', items: [], unclear: []);
+    $html = (new BriefRenderer)->render(
+        $brief->withUsage(new BriefUsage('claude-from-the-future', inputTokens: 100, outputTokens: 10)),
+        Carbon::parse('2026-10-19'),
+        Carbon::parse('2026-10-26'),
+    );
+
+    expect($html)->toContain('100 tokens in, 10 out')
+        ->not->toContain('about $');
 });

@@ -10,7 +10,7 @@ final class Settings
         'audience' => 'non-technical',
         'tone' => 'first-person',
         'max_items' => 6,
-        'deep' => false,
+        'deep' => true,
     ];
 
     public function __construct(private readonly string $directory) {}

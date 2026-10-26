@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Data\BriefItem;
+use App\Data\BriefUsage;
 use App\Data\ClientBrief;
 use Illuminate\Support\Carbon;
 
@@ -28,12 +29,13 @@ final class BriefRenderer
             .'<div class="mt-1 px-1 bg-blue-300 text-black">Shiplog</div>'
             .'<div class="ml-1 mt-1 font-bold">%s</div>'
             .'<div class="ml-1 text-gray-500">%s</div>'
-            .'%s%s'
+            .'%s%s%s'
             .'</div>',
             $headline,
             $range,
             $items,
             $unclear,
+            $this->usage($brief->usage),
         );
     }
 
@@ -76,6 +78,33 @@ final class BriefRenderer
             .'<span class="text-yellow-400">Too vague to describe — tighten these commit messages:</span>'
             .$lines
             .'</div>';
+    }
+
+    private function usage(?BriefUsage $usage): string
+    {
+        if ($usage === null) {
+            return '';
+        }
+
+        $text = sprintf(
+            '%s tokens in, %s out',
+            number_format($usage->inputTokens),
+            number_format($usage->outputTokens),
+        );
+
+        $cost = $usage->estimatedCost();
+
+        if ($cost !== null) {
+            $text .= match (true) {
+                $cost < 0.0001 => ' — under $0.0001',
+                $cost < 0.01 => ' — about $'.number_format($cost, 4),
+                default => ' — about $'.number_format($cost, 2),
+            };
+        }
+
+        $text .= ' ('.$usage->model.')';
+
+        return sprintf('<div class="ml-1 mt-1 text-gray-500">%s</div>', $this->escape($text));
     }
 
     private function escape(string $value): string

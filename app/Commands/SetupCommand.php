@@ -56,8 +56,8 @@ class SetupCommand extends Command
                 $deep = select(
                     label: 'Include code diffs in the brief?',
                     options: [
-                        'true' => 'Yes, include code diffs (Recommended but costly)',
-                        'false' => 'No, just the summary',
+                        'true' => 'Yes, send the diffs so claims can be checked (default, costs more)',
+                        'false' => 'No, summary only (cheaper, claims cannot be checked)',
                     ],
                     default: $current['deep'] ? 'true' : 'false',
                 ) === 'true';

@@ -23,8 +23,8 @@ class BriefCommand extends Command
         {--since=7 days ago : Start of the range}
         {--until=now : End of the range}
         {--all-authors : Include everyone, not just you}
-        {--deep : Send the code diffs too, so claims can be checked against what changed}
-        {--surface : Only include the summary, not the code diffs}
+        {--deep : Send the code diffs so claims can be checked against what changed (the default)}
+        {--surface : Skip the diffs: cheaper and faster, but claims cannot be checked}
         {--audience= : Who reads the brief: technical or non-technical}
         {--tone= : How it is written: first-person or neutral}
         {--max-items= : How many items a brief may contain}';

@@ -26,7 +26,7 @@ beforeEach(function () {
         '--audience' => 'non-technical',
         '--tone' => 'first-person',
         '--max-items' => '6',
-        '--deep' => 'false',
+        '--deep' => 'true',
     ];
 });
 
