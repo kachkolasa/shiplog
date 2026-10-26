@@ -40,17 +40,41 @@ does not read diffs.
 
 ## Install
 
+### With Composer
+
 ```bash
-git clone <this repo> shiplog
-cd shiplog
-composer install
-./shiplog setup
+composer global require kachkolasa/shiplog
 ```
 
-To build a single-file executable you can put on your `PATH`:
+Composer puts the `shiplog` command in its global bin directory. If your shell
+cannot find it afterwards, that directory is not on your `PATH`:
 
 ```bash
-./shiplog app:build
+composer global config bin-dir --absolute   # prints the directory
+export PATH="$PATH:$(composer global config bin-dir --absolute)"
+```
+
+### As a standalone binary
+
+Download `shiplog` and `shiplog.sha256` from the
+[latest release](https://github.com/kachkolasa/shiplog/releases/latest), then:
+
+```bash
+shasum -a 256 -c shiplog.sha256
+chmod +x shiplog
+mv shiplog /usr/local/bin/
+```
+
+Self-contained, but it still needs a PHP runtime — a phar is not a static
+binary. Nothing else is installed, which is the main advantage over Composer:
+no transitive dependencies land in your global bin.
+
+### Then
+
+```bash
+shiplog setup
+cd ~/some/project
+shiplog brief
 ```
 
 ## Credentials
@@ -167,9 +191,25 @@ case. Read the brief before you send it.
 ## Development
 
 ```bash
-vendor/bin/pest          # 96 tests, no network, no API key needed
+git clone https://github.com/kachkolasa/shiplog.git
+cd shiplog && composer install
+./shiplog brief
+```
+
+```bash
+vendor/bin/pest          # 95 tests, no network, no API key needed
 vendor/bin/pint          # code style
 ```
+
+To compile the standalone binary yourself:
+
+```bash
+./shiplog app:build --build-version=v0.1.2 --env=development
+```
+
+`--env=development` is required: `config/app.php` sets the environment to
+production so that an installed copy does not list the framework's scaffolding
+commands, and `app:build` is one of the commands that hides.
 
 The one class that calls the API sits behind the `BriefWriter` interface, and
 the test suite binds a fake in its place — so the suite never makes a request
