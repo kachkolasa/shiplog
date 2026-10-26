@@ -5,6 +5,7 @@ namespace App\Commands;
 use App\Contracts\BriefWriter;
 use App\Services\BriefRenderer;
 use App\Services\CommitDigest;
+use App\Services\Credentials;
 use App\Services\GitLog;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Support\Carbon;
@@ -15,32 +16,25 @@ use function Termwind\render;
 
 class BriefCommand extends Command
 {
-    /**
-     * The name and signature of the console command.
-     *
-     * @var string
-     */
     protected $signature = 'brief
         {--since=7 days ago : Start of the range}
         {--until=now : End of the range}
         {--all-authors : Include everyone, not just you}';
 
-    /**
-     * The console command description.
-     *
-     * @var string
-     */
     protected $description = 'Summarise recent commits as a client-ready update';
 
-    /**
-     * Execute the console command.
-     */
     public function handle(
         GitLog $git,
         CommitDigest $digest,
         BriefWriter $writer,
         BriefRenderer $renderer,
+        Credentials $credentials,
     ): int {
+        if(! $credentials->configured()) {
+            render($renderer->error('Anthropic credentials not found. Please run shiplog setup command.'));
+            return self::FAILURE;
+        }
+
         $repo = getcwd() ?: '.';
         $start = Carbon::parse($this->option('since'));
         $end = Carbon::parse($this->option('until'));

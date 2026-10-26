@@ -1,6 +1,7 @@
 <?php
 
 use App\Contracts\BriefWriter;
+use App\Services\Credentials;
 use App\Services\FakeBriefWriter;
 use Illuminate\Support\Facades\Process;
 
@@ -69,6 +70,33 @@ function gitCommits(): array
     ];
 }
 
+beforeEach(function () {
+    // The command refuses to run without credentials, so the suite controls
+    // that rather than depending on whether this machine happens to have an ant
+    // profile or an exported key.
+    $this->savedEnv = [
+        'ANTHROPIC_API_KEY' => getenv('ANTHROPIC_API_KEY'),
+        'ANTHROPIC_AUTH_TOKEN' => getenv('ANTHROPIC_AUTH_TOKEN'),
+    ];
+    putenv('ANTHROPIC_API_KEY');
+    putenv('ANTHROPIC_AUTH_TOKEN');
+
+    $this->credentialDirectory = sys_get_temp_dir().'/shiplog-brief-creds-'.bin2hex(random_bytes(6));
+    mkdir($this->credentialDirectory, 0700, true);
+
+    $this->app->instance(Credentials::class, new Credentials($this->credentialDirectory));
+});
+
+afterEach(function () {
+    foreach ($this->savedEnv as $variable => $value) {
+        is_string($value) ? putenv("{$variable}={$value}") : putenv($variable);
+    }
+
+    if (is_dir($this->credentialDirectory)) {
+        rmdir($this->credentialDirectory);
+    }
+});
+
 it('hands the writer a digest built from the faked history', function () {
     fakeGit(gitCommits());
 
@@ -126,4 +154,15 @@ it('skips the author lookup with --all-authors', function () {
     $this->artisan('brief', ['--all-authors' => true])->assertExitCode(0);
 
     Process::assertDidntRun(fn ($process) => ranCommand($process, 'user.email'));
+});
+
+it('refuses to run without credentials', function () {
+    Process::fake();
+    $this->app->instance(Credentials::class, new Credentials($this->credentialDirectory.'/absent'));
+
+    $this->artisan('brief')
+        ->expectsOutputToContain('shiplog setup')
+        ->assertExitCode(1);
+
+    Process::assertNothingRan();
 });
