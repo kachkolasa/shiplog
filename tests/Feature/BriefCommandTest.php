@@ -3,6 +3,7 @@
 use App\Contracts\BriefWriter;
 use App\Services\Credentials;
 use App\Services\FakeBriefWriter;
+use App\Services\Settings;
 use Illuminate\Support\Facades\Process;
 
 /**
@@ -86,6 +87,19 @@ beforeEach(function () {
 
     $this->app->instance(Credentials::class, new Credentials($this->credentialDirectory));
 
+    // The command reads settings, and brief now refuses to run without a config
+    // file, so the suite owns both rather than reading whatever is in the
+    // developer's home directory.
+    $this->settingsDirectory = sys_get_temp_dir().'/shiplog-brief-settings-'.bin2hex(random_bytes(6));
+    $settings = new Settings($this->settingsDirectory);
+    $settings->save([
+        'audience' => 'non-technical',
+        'tone' => 'first-person',
+        'max_items' => 6,
+        'deep' => false,
+    ]);
+    $this->app->instance(Settings::class, $settings);
+
     $writer = new FakeBriefWriter;
     $this->app->instance(BriefWriter::class, $writer);
 });
@@ -97,6 +111,11 @@ afterEach(function () {
 
     if (is_dir($this->credentialDirectory)) {
         rmdir($this->credentialDirectory);
+    }
+
+    if (is_dir($this->settingsDirectory)) {
+        array_map('unlink', glob($this->settingsDirectory.'/*') ?: []);
+        rmdir($this->settingsDirectory);
     }
 });
 

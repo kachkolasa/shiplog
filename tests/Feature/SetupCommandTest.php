@@ -26,6 +26,7 @@ beforeEach(function () {
         '--audience' => 'non-technical',
         '--tone' => 'first-person',
         '--max-items' => '6',
+        '--deep' => 'false',
     ];
 });
 
@@ -45,12 +46,14 @@ it('saves the values passed as flags', function () {
         '--audience' => 'technical',
         '--tone' => 'neutral',
         '--max-items' => '4',
+        '--deep' => 'true',
     ])->assertExitCode(0);
 
     expect($this->settings->all())->toEqual([
         'audience' => 'technical',
         'max_items' => 4,
         'tone' => 'neutral',
+        'deep' => true,
     ]);
 });
 
@@ -59,12 +62,14 @@ it('saves the answers given to the prompts', function () {
         ->expectsQuestion('Who reads the brief?', 'technical')
         ->expectsQuestion('How should it be written?', 'neutral')
         ->expectsQuestion('At most how many items in a brief?', '3')
+        ->expectsQuestion('Include code diffs in the brief?', 'true')
         ->assertExitCode(0);
 
     expect($this->settings->all())->toEqual([
         'audience' => 'technical',
         'max_items' => 3,
         'tone' => 'neutral',
+        'deep' => true,
     ]);
 });
 

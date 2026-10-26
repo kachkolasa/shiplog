@@ -45,7 +45,7 @@ it('writes keys in a stable order', function () {
 
     $keys = array_keys(json_decode((string) file_get_contents($this->settings->path()), true));
 
-    expect($keys)->toBe(['audience', 'max_items', 'tone']);
+    expect($keys)->toBe(['audience', 'deep', 'max_items', 'tone']);
 });
 
 it('locks down the file and directory permissions', function () {

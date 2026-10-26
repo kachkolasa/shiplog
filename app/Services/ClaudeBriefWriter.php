@@ -6,6 +6,7 @@ use Anthropic\Client;
 use Anthropic\Messages\Model;
 use Anthropic\Messages\StopReason;
 use App\Contracts\BriefWriter;
+use App\Data\BriefOptions;
 use App\Data\ClientBrief;
 use Illuminate\Support\Collection;
 
@@ -16,7 +17,7 @@ final readonly class ClaudeBriefWriter implements BriefWriter
         private BriefPrompt $prompt,
     ) {}
 
-    public function write(string $digest, bool $deep = false): ClientBrief
+    public function write(string $digest, BriefOptions $options): ClientBrief
     {
         $message = $this->client->messages->create(
             maxTokens: 16000,
@@ -60,14 +61,16 @@ final readonly class ClaudeBriefWriter implements BriefWriter
             system: [
                 [
                     'type' => 'text',
-                    'text' => $this->prompt->build($deep),
+                    'text' => $this->prompt->build($options),
                     'cacheControl' => ['type' => 'ephemeral'],
                 ],
             ],
         );
 
         if ($message->stopReason !== StopReason::END_TURN->value) {
-            $this->resolveStopReason(StopReason::tryFrom($message->stopReason));
+            $this->resolveStopReason(
+                $message->stopReason === null ? null : StopReason::tryFrom($message->stopReason)
+            );
         }
 
         if (! is_array($message?->content)) {
@@ -93,7 +96,7 @@ final readonly class ClaudeBriefWriter implements BriefWriter
         return ClientBrief::fromArray($content);
     }
 
-    private function resolveStopReason(StopReason $reason): void
+    private function resolveStopReason(?StopReason $reason): void
     {
         $error = match ($reason) {
             StopReason::MAX_TOKENS => 'Reached the max tokens',

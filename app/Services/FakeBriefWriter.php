@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Contracts\BriefWriter;
 use App\Data\BriefItem;
+use App\Data\BriefOptions;
 use App\Data\ClientBrief;
 
 final class FakeBriefWriter implements BriefWriter
@@ -14,10 +15,10 @@ final class FakeBriefWriter implements BriefWriter
 
     public function __construct(private readonly ?ClientBrief $brief = null) {}
 
-    public function write(string $digest, bool $deep = false): ClientBrief
+    public function write(string $digest, BriefOptions $options): ClientBrief
     {
         $this->received = $digest;
-        $this->deepRequested = $deep;
+        $this->deepRequested = $options->deep;
 
         return $this->brief ?? new ClientBrief(
             headline: 'Three changes shipped this week',

@@ -2,6 +2,7 @@
 
 namespace App\Commands;
 
+use App\Data\BriefOptions;
 use App\Services\Credentials;
 use App\Services\Settings;
 use Illuminate\Console\Scheduling\Schedule;
@@ -16,19 +17,10 @@ class SetupCommand extends Command
     protected $signature = 'setup
         {--audience= : Who reads the brief: technical or non-technical}
         {--tone= : How it is written: first-person or neutral}
-        {--max-items= : How many items a brief may contain}';
+        {--max-items= : How many items a brief may contain}
+        {--deep= : Include code diffs in the brief}';
 
     protected $description = 'Configure shiplog and check your API credentials';
-
-    private const array AUDIENCES = [
-        'non-technical' => 'Non-technical (a founder, or a client contact)',
-        'technical' => 'Technical (a CTO, or an engineering lead)',
-    ];
-
-    private const array TONES = [
-        'first-person' => 'First person ("We shipped date filtering")',
-        'neutral' => 'Neutral ("Date filtering is now available")',
-    ];
 
     public function handle(Settings $settings, Credentials $credentials): int
     {
@@ -38,17 +30,17 @@ class SetupCommand extends Command
         $current = $this->currentValues($settings);
 
         try {
-            $audience = $this->validatedOption('audience', self::AUDIENCES)
+            $audience = $this->validatedOption('audience', BriefOptions::AUDIENCES)
                 ?? select(
                     label: 'Who reads the brief?',
-                    options: self::AUDIENCES,
+                    options: BriefOptions::AUDIENCES,
                     default: $current['audience'],
                 );
 
-            $tone = $this->validatedOption('tone', self::TONES)
+            $tone = $this->validatedOption('tone', BriefOptions::TONES)
                 ?? select(
                     label: 'How should it be written?',
-                    options: self::TONES,
+                    options: BriefOptions::TONES,
                     default: $current['tone'],
                 );
 
@@ -57,6 +49,19 @@ class SetupCommand extends Command
                 default: (string) $current['max_items'],
                 validate: fn (string $value) => $this->validateMaxItems($value),
             );
+
+            $deep = $this->validatedBoolean('deep');
+
+            if ($deep === null) {
+                $deep = select(
+                    label: 'Include code diffs in the brief?',
+                    options: [
+                        'true' => 'Yes, include code diffs (Recommended but costly)',
+                        'false' => 'No, just the summary',
+                    ],
+                    default: $current['deep'] ? 'true' : 'false',
+                ) === 'true';
+            }
 
             if ($error = $this->validateMaxItems((string) $maxItems)) {
                 $this->error($error);
@@ -68,6 +73,7 @@ class SetupCommand extends Command
                 'audience' => $audience,
                 'tone' => $tone,
                 'max_items' => (int) $maxItems,
+                'deep' => $deep,
             ]);
         } catch (RuntimeException $e) {
             $this->error($e->getMessage());
@@ -135,6 +141,24 @@ class SetupCommand extends Command
         }
 
         return $value;
+    }
+
+    private function validatedBoolean(string $option): ?bool
+    {
+        $value = $this->option($option);
+
+        if ($value === null) {
+            return null;
+        }
+
+        if (! in_array($value, ['true', 'false'], true)) {
+            throw new RuntimeException(sprintf(
+                '--%s must be either "true" or "false".',
+                $option,
+            ));
+        }
+
+        return $value === 'true';
     }
 
     private function validateMaxItems(string $value): ?string

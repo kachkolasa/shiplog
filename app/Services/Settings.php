@@ -10,6 +10,7 @@ final class Settings
         'audience' => 'non-technical',
         'tone' => 'first-person',
         'max_items' => 6,
+        'deep' => false,
     ];
 
     public function __construct(private readonly string $directory) {}
@@ -80,6 +81,13 @@ final class Settings
             @unlink($temp);
 
             throw new RuntimeException("Could not move the new config into {$this->path()}.");
+        }
+    }
+
+    public function delete(): void
+    {
+        if ($this->exists() && ! unlink($this->path())) {
+            throw new RuntimeException("Could not delete {$this->path()}.");
         }
     }
 }

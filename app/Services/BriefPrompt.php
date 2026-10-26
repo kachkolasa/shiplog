@@ -2,6 +2,8 @@
 
 namespace App\Services;
 
+use App\Data\BriefOptions;
+
 final class BriefPrompt
 {
     private const string BASE = <<<'TXT'
@@ -38,22 +40,22 @@ final class BriefPrompt
 
     private const int MAX_ITEMS = 20;
 
-    public function __construct(private readonly Settings $settings) {}
+    public function __construct() {}
 
-    public function build(bool $deep = false): string
+    public function build(BriefOptions $options): string
     {
         return implode("\n\n", array_filter([
             self::BASE,
-            $deep ? self::EVIDENCE : null,
-            $this->audience(),
-            $this->tone(),
-            $this->length(),
+            $options->deep ? self::EVIDENCE : null,
+            $this->audience($options->audience),
+            $this->tone($options->tone),
+            $this->length($options->maxItems),
         ]));
     }
 
-    private function audience(): string
+    private function audience(?string $audience): string
     {
-        return match ($this->settings->get('audience')) {
+        return match ($audience) {
             'technical' => 'Audience: the reader is technical, a CTO or an engineering lead. '
                 .'You may name areas of the product and assume they understand software terms. '
                 .'Still describe what changed for users, not how it was built.',
@@ -63,9 +65,9 @@ final class BriefPrompt
         };
     }
 
-    private function tone(): string
+    private function tone(?string $tone): string
     {
-        return match ($this->settings->get('tone')) {
+        return match ($tone) {
             'neutral' => 'Tone: write neutrally, without saying who did the work. '
                 .'"Date filtering is now available."',
             default => 'Tone: write as the team reporting on its own work. '
@@ -73,11 +75,10 @@ final class BriefPrompt
         };
     }
 
-    private function length(): string
+    private function length(?int $maxItems): string
     {
-        $configured = $this->settings->get('max_items');
-        $max = is_numeric($configured)
-            ? (int) $configured
+        $max = is_numeric($maxItems)
+            ? (int) $maxItems
             : Settings::DEFAULTS['max_items'];
         $max = max(self::MIN_ITEMS, min(self::MAX_ITEMS, $max));
 
