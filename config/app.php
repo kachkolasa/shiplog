@@ -1,6 +1,13 @@
 <?php
 
 use App\Providers\AppServiceProvider;
+use Composer\InstalledVersions;
+
+$version = app('git.version');
+
+if ($version === 'unreleased' && InstalledVersions::isInstalled('kachkolasa/shiplog')) {
+    $version = InstalledVersions::getPrettyVersion('kachkolasa/shiplog') ?? 'unreleased';
+}
 
 return [
 
@@ -28,7 +35,7 @@ return [
     |
     */
 
-    'version' => app('git.version'),
+    'version' => $version,
 
     /*
     |--------------------------------------------------------------------------
@@ -42,7 +49,7 @@ return [
     |
     */
 
-    'env' => 'development',
+    'env' => 'production',
 
     /*
     |--------------------------------------------------------------------------
