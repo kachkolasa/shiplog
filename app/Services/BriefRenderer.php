@@ -82,9 +82,4 @@ final class BriefRenderer
     {
         return e($value);
     }
-
-    public function error(string $message): string
-    {
-        return sprintf('<div class="text-red-500">%s</div>', $message);
-    }
 }

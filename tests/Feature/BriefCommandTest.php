@@ -85,6 +85,9 @@ beforeEach(function () {
     mkdir($this->credentialDirectory, 0700, true);
 
     $this->app->instance(Credentials::class, new Credentials($this->credentialDirectory));
+
+    $writer = new FakeBriefWriter;
+    $this->app->instance(BriefWriter::class, $writer);
 });
 
 afterEach(function () {
@@ -99,10 +102,7 @@ afterEach(function () {
 
 it('hands the writer a digest built from the faked history', function () {
     fakeGit(gitCommits());
-
-    $writer = new FakeBriefWriter;
-    $this->app->instance(BriefWriter::class, $writer);
-
+    $writer = $this->app->make(BriefWriter::class);
     $this->artisan('brief')->assertExitCode(0);
 
     expect($writer->received)

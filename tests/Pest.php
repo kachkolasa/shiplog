@@ -1,5 +1,7 @@
 <?php
 
+use App\Contracts\BriefWriter;
+use App\Services\FakeBriefWriter;
 use Tests\TestCase;
 
 /*
@@ -13,7 +15,9 @@ use Tests\TestCase;
 |
 */
 
-uses(TestCase::class)->in('Feature');
+uses(TestCase::class)->beforeEach(function () {
+    $this->app->bind(BriefWriter::class, FakeBriefWriter::class);
+})->in('Feature');
 
 /*
 |--------------------------------------------------------------------------
@@ -40,8 +44,3 @@ expect()->extend('toBeOne', function () {
 | global functions to help you to reduce the number of lines of code in your test files.
 |
 */
-
-function something(): void
-{
-    // ..
-}

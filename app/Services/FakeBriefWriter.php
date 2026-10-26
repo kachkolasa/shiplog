@@ -6,7 +6,6 @@ use App\Contracts\BriefWriter;
 use App\Data\BriefItem;
 use App\Data\ClientBrief;
 
-
 final class FakeBriefWriter implements BriefWriter
 {
     public ?string $received = null;

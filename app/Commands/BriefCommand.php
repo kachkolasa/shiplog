@@ -30,8 +30,9 @@ class BriefCommand extends Command
         BriefRenderer $renderer,
         Credentials $credentials,
     ): int {
-        if(! $credentials->configured()) {
-            render($renderer->error('Anthropic credentials not found. Please run shiplog setup command.'));
+        if (! $credentials->configured()) {
+            $this->error('Anthropic credentials not found. Please run shiplog setup command.');
+
             return self::FAILURE;
         }
 
@@ -58,7 +59,6 @@ class BriefCommand extends Command
 
             return self::SUCCESS;
         }
-
 
         render($renderer->render($writer->write($digest->build($commits)), $start, $end));
 

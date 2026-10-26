@@ -8,13 +8,14 @@ use Illuminate\Support\Facades\Process;
 class GitLog
 {
     private const string RECORD = "\x1e";
-    private const string FIELD  = "\x1f";
+
+    private const string FIELD = "\x1f";
 
     public function ensureRepo(string $path): void
     {
         $results = Process::path($path)->run(['git', 'rev-parse', '--is-inside-work-tree']);
 
-        if($results->failed()) {
+        if ($results->failed()) {
             throw new \RuntimeException('This folder is not a git repository.');
         }
     }
@@ -32,15 +33,15 @@ class GitLog
             'git', 'log',
             '--branches',
             '--no-merges',
-            '--since=' . $since->toIso8601String(),
-            '--until=' . $until->toIso8601String(),
+            '--since='.$since->toIso8601String(),
+            '--until='.$until->toIso8601String(),
             '--date=iso-strict',
             '--pretty=format:%x1e%H%x1f%ad%x1f%s%x1f%b%x1f',
             '--numstat',
         ];
 
         if ($author) {
-            $command[] = '--author=' . $author;
+            $command[] = '--author='.$author;
         }
 
         $result = Process::path($path)->run($command);
@@ -66,8 +67,8 @@ class GitLog
                 [$added, $deleted, $file] = explode("\t", $line, 3);
 
                 return [
-                    'file'    => $file,
-                    'added'   => $added === '-' ? 0 : (int) $added,
+                    'file' => $file,
+                    'added' => $added === '-' ? 0 : (int) $added,
                     'deleted' => $deleted === '-' ? 0 : (int) $deleted,
                 ];
             })
@@ -75,11 +76,11 @@ class GitLog
             ->all();
 
         return [
-            'hash'    => $hash,
-            'date'    => $date,
+            'hash' => $hash,
+            'date' => $date,
             'subject' => trim($subject),
-            'body'    => trim($body),
-            'files'   => $files,
+            'body' => trim($body),
+            'files' => $files,
         ];
     }
 }

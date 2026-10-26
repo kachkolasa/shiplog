@@ -3,8 +3,8 @@
 namespace App\Providers;
 
 use App\Contracts\BriefWriter;
+use App\Services\ClaudeBriefWriter;
 use App\Services\Credentials;
-use App\Services\FakeBriefWriter;
 use App\Services\Settings;
 use Illuminate\Support\ServiceProvider;
 
@@ -23,8 +23,7 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        // TODO: Change to API brief writer once done
-        $this->app->bind(BriefWriter::class, FakeBriefWriter::class);
+        $this->app->bind(BriefWriter::class, ClaudeBriefWriter::class);
 
         $this->app->singleton(Settings::class, fn () => new Settings(
             self::configDirectory('shiplog'),
