@@ -2,10 +2,14 @@
 
 namespace App\Commands;
 
+use App\Contracts\BriefWriter;
+use App\Services\BriefRenderer;
+use App\Services\CommitDigest;
 use App\Services\GitLog;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Support\Carbon;
 use LaravelZero\Framework\Commands\Command;
+use RuntimeException;
 
 use function Termwind\render;
 
@@ -26,14 +30,18 @@ class BriefCommand extends Command
      *
      * @var string
      */
-    protected $description = 'Command description';
+    protected $description = 'Summarise recent commits as a client-ready update';
 
     /**
      * Execute the console command.
      */
-    public function handle(GitLog $git): int
-    {
-        $repo = getcwd();
+    public function handle(
+        GitLog $git,
+        CommitDigest $digest,
+        BriefWriter $writer,
+        BriefRenderer $renderer,
+    ): int {
+        $repo = getcwd() ?: '.';
         $start = Carbon::parse($this->option('since'));
         $end = Carbon::parse($this->option('until'));
 
@@ -41,16 +49,24 @@ class BriefCommand extends Command
             $end = $end->endOfDay();
         }
 
-        $git->ensureRepo($repo);
-        $author = $this->option('all-authors') ? null : $git->currentEmail($repo);
-        $commits = $git->commits($repo, $start, $end, $author);
+        try {
+            $git->ensureRepo($repo);
+            $author = $this->option('all-authors') ? null : $git->currentEmail($repo);
+            $commits = $git->commits($repo, $start, $end, $author);
+        } catch (RuntimeException $e) {
+            $this->error($e->getMessage());
 
-        if (empty($commits)) {
+            return self::FAILURE;
+        }
+
+        if ($commits === []) {
             $this->warn("No commits between {$start->toFormattedDateString()} and {$end->toFormattedDateString()}.");
+
             return self::SUCCESS;
         }
 
-        render(json_encode($commits));
+
+        render($renderer->render($writer->write($digest->build($commits)), $start, $end));
 
         return self::SUCCESS;
     }
