@@ -4,32 +4,69 @@ namespace App\Services;
 
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Str;
 
 final class CommitDigest
 {
-    private const array IGNORED_FILES = [
-        'composer.lock',
-        'package-lock.json',
-        'yarn.lock',
-        'pnpm-lock.yaml',
-    ];
-
-    private const array IGNORED_PREFIXES = [
-        'vendor/',
-        'node_modules/',
-    ];
-
     private const int MAX_AREAS = 4;
 
     private const int MAX_SUBJECT = 120;
 
-    public function build(array $commits): string
+    private const int PATCH_BUDGET = 120000;
+
+    public function build(array $commits, array $patches = [], ?int $budget = null): string
     {
-        return collect($commits)
+        $ordered = collect($commits)
             ->sortBy(fn (array $commit) => Carbon::parse($commit['date'])->getTimestamp())
-            ->map(fn (array $commit) => $this->line($commit))
+            ->values();
+
+        $deep = $patches !== [];
+        $included = $this->withinBudget($ordered, $patches, $budget ?? self::PATCH_BUDGET);
+
+        return $ordered
+            ->map(fn (array $commit) => $this->entry(
+                $commit,
+                $included[$commit['hash']] ?? null,
+                $deep,
+            ))
             ->implode("\n");
+    }
+
+    private function withinBudget(Collection $ordered, array $patches, int $budget): array
+    {
+        if ($patches === []) {
+            return [];
+        }
+
+        $included = [];
+        $spent = 0;
+
+        foreach ($ordered->reverse() as $commit) {
+            $patch = $patches[$commit['hash']] ?? '';
+
+            if ($patch === '' || $spent + strlen($patch) > $budget) {
+                continue;
+            }
+
+            $included[$commit['hash']] = $patch;
+            $spent += strlen($patch);
+        }
+
+        return $included;
+    }
+
+    private function entry(array $commit, ?string $patch, bool $deep): string
+    {
+        $line = $this->line($commit);
+
+        if (! $deep) {
+            return $line;
+        }
+
+        if ($patch === null) {
+            return $line."\n  (no diff included for this commit)";
+        }
+
+        return $line."\n```diff\n".$patch."\n```";
     }
 
     private function line(array $commit): string
@@ -59,8 +96,7 @@ final class CommitDigest
     private function relevantFiles(array $files): Collection
     {
         return collect($files)
-            ->reject(fn (array $file) => in_array(basename($file['file']), self::IGNORED_FILES, true))
-            ->reject(fn (array $file) => Str::startsWith($file['file'], self::IGNORED_PREFIXES))
+            ->reject(fn (array $file) => IgnoredPaths::matches($file['file']))
             ->values();
     }
 

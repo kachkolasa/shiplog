@@ -19,7 +19,8 @@ class BriefCommand extends Command
     protected $signature = 'brief
         {--since=7 days ago : Start of the range}
         {--until=now : End of the range}
-        {--all-authors : Include everyone, not just you}';
+        {--all-authors : Include everyone, not just you}
+        {--deep : Send the code diffs too, so claims can be checked against what changed}';
 
     protected $description = 'Summarise recent commits as a client-ready update';
 
@@ -44,10 +45,13 @@ class BriefCommand extends Command
             $end = $end->endOfDay();
         }
 
+        $deep = (bool) $this->option('deep');
+
         try {
             $git->ensureRepo($repo);
             $author = $this->option('all-authors') ? null : $git->currentEmail($repo);
             $commits = $git->commits($repo, $start, $end, $author);
+            $patches = $deep ? $git->patches($repo, $start, $end, $author) : [];
         } catch (RuntimeException $e) {
             $this->error($e->getMessage());
 
@@ -60,7 +64,9 @@ class BriefCommand extends Command
             return self::SUCCESS;
         }
 
-        render($renderer->render($writer->write($digest->build($commits)), $start, $end));
+        $brief = $writer->write($digest->build($commits, $patches), $deep);
+
+        render($renderer->render($brief, $start, $end));
 
         return self::SUCCESS;
     }

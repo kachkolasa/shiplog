@@ -122,3 +122,67 @@ it('never leaks commit hashes', function () {
 it('returns an empty digest for no commits', function () {
     expect((new CommitDigest)->build([]))->toBe('');
 });
+
+it('leaves the digest unchanged when no patches are supplied', function () {
+    $digest = (new CommitDigest)->build([digestCommit()]);
+
+    expect($digest)->not->toContain('```diff')
+        ->and($digest)->not->toContain('no diff included');
+});
+
+it('appends a fenced diff when a patch is supplied', function () {
+    $digest = (new CommitDigest)->build(
+        [digestCommit(['hash' => 'aaa'])],
+        ['aaa' => "diff --git a/x b/x\n+hello"],
+    );
+
+    expect($digest)->toContain("```diff\ndiff --git a/x b/x\n+hello\n```");
+});
+
+it('marks a commit that got no patch so the model can distrust it', function () {
+    $digest = (new CommitDigest)->build(
+        [digestCommit(['hash' => 'aaa']), digestCommit(['hash' => 'bbb', 'subject' => 'other'])],
+        ['aaa' => 'diff --git a/x b/x'],
+    );
+
+    expect($digest)->toContain('(no diff included for this commit)');
+});
+
+it('spends the patch budget on the newest commits first', function () {
+    $commits = [
+        digestCommit(['hash' => 'old', 'subject' => 'older', 'date' => '2026-10-20T10:00:00+00:00']),
+        digestCommit(['hash' => 'new', 'subject' => 'newer', 'date' => '2026-10-25T10:00:00+00:00']),
+    ];
+
+    $digest = (new CommitDigest)->build($commits, [
+        'old' => str_repeat('a', 60),
+        'new' => str_repeat('b', 60),
+    ], budget: 60);
+
+    expect($digest)->toContain(str_repeat('b', 60))
+        ->and($digest)->not->toContain(str_repeat('a', 60));
+});
+
+it('still fits a small older patch once a large newer one is skipped', function () {
+    $commits = [
+        digestCommit(['hash' => 'small', 'subject' => 'older', 'date' => '2026-10-20T10:00:00+00:00']),
+        digestCommit(['hash' => 'huge', 'subject' => 'newer', 'date' => '2026-10-25T10:00:00+00:00']),
+    ];
+
+    $digest = (new CommitDigest)->build($commits, [
+        'small' => str_repeat('a', 10),
+        'huge' => str_repeat('b', 500),
+    ], budget: 100);
+
+    expect($digest)->toContain(str_repeat('a', 10))
+        ->and($digest)->not->toContain(str_repeat('b', 500));
+});
+
+it('never includes a patch for a commit it was not given one for', function () {
+    $digest = (new CommitDigest)->build(
+        [digestCommit(['hash' => 'aaa'])],
+        ['zzz' => 'diff --git a/other b/other'],
+    );
+
+    expect($digest)->not->toContain('a/other');
+});

@@ -166,3 +166,32 @@ it('refuses to run without credentials', function () {
 
     Process::assertNothingRan();
 });
+
+it('does not fetch patches unless --deep is passed', function () {
+    fakeGit(gitCommits());
+    $writer = $this->app->make(BriefWriter::class);
+
+    $this->artisan('brief')->assertExitCode(0);
+
+    expect($writer->deepRequested)->toBeFalse()
+        ->and($writer->received)->not->toContain('```diff');
+
+    Process::assertDidntRun(fn ($process) => ranCommand($process, '--patch'));
+});
+
+it('sends diffs and tells the writer when --deep is passed', function () {
+    Process::fake([
+        "*'rev-parse'*" => Process::result('true'),
+        "*'config' 'user.email'*" => Process::result('dev@example.com'),
+        "*'--patch'*" => Process::result("\x1edeadbeefcafe0000000000000000000000000000\ndiff --git a/app/X.php b/app/X.php\n+code"),
+        "*'log'*" => Process::result(fakeGitLog(gitCommits())),
+    ]);
+
+    $writer = $this->app->make(BriefWriter::class);
+
+    $this->artisan('brief', ['--deep' => true])->assertExitCode(0);
+
+    expect($writer->deepRequested)->toBeTrue()
+        ->and($writer->received)->toContain('```diff')
+        ->and($writer->received)->toContain('+code');
+});

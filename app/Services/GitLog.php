@@ -5,7 +5,7 @@ namespace App\Services;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Process;
 
-class GitLog
+final class GitLog
 {
     private const string RECORD = "\x1e";
 
@@ -54,6 +54,40 @@ class GitLog
             ->filter(fn ($chunk) => trim($chunk) !== '')
             ->map(fn ($chunk) => $this->parseCommit($chunk))
             ->values()
+            ->all();
+    }
+
+    public function patches(string $path, Carbon $since, Carbon $until, ?string $author): array
+    {
+        $command = [
+            'git', 'log',
+            '--branches',
+            '--no-merges',
+            '--since='.$since->toIso8601String(),
+            '--until='.$until->toIso8601String(),
+            '--format=%x1e%H',
+            '--patch',
+        ];
+
+        if ($author) {
+            $command[] = '--author='.$author;
+        }
+
+        $command = array_merge($command, IgnoredPaths::pathspec());
+
+        $result = Process::path($path)->run($command);
+
+        if ($result->failed()) {
+            throw new \RuntimeException($result->errorOutput());
+        }
+
+        return collect(explode(self::RECORD, $result->output()))
+            ->filter(fn ($chunk) => trim($chunk) !== '')
+            ->mapWithKeys(function (string $chunk) {
+                [$hash, $patch] = array_pad(explode("\n", $chunk, 2), 2, '');
+
+                return [trim($hash) => trim($patch)];
+            })
             ->all();
     }
 

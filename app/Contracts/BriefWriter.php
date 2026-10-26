@@ -6,5 +6,5 @@ use App\Data\ClientBrief;
 
 interface BriefWriter
 {
-    public function write(string $digest): ClientBrief;
+    public function write(string $digest, bool $deep = false): ClientBrief;
 }

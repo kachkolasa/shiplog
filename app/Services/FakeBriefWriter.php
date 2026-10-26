@@ -10,11 +10,14 @@ final class FakeBriefWriter implements BriefWriter
 {
     public ?string $received = null;
 
+    public bool $deepRequested = false;
+
     public function __construct(private readonly ?ClientBrief $brief = null) {}
 
-    public function write(string $digest): ClientBrief
+    public function write(string $digest, bool $deep = false): ClientBrief
     {
         $this->received = $digest;
+        $this->deepRequested = $deep;
 
         return $this->brief ?? new ClientBrief(
             headline: 'Three changes shipped this week',

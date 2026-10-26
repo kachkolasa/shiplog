@@ -9,31 +9,19 @@ use App\Contracts\BriefWriter;
 use App\Data\ClientBrief;
 use Illuminate\Support\Collection;
 
-class ClaudeBriefWriter implements BriefWriter
+final readonly class ClaudeBriefWriter implements BriefWriter
 {
-    private const string RULES = <<<'TXT'
-        You turn a developer's git history into a short status update for a non-technical client.
+    public function __construct(
+        private Client      $client,
+        private BriefPrompt $prompt,
+    ) {}
 
-        Rules:
-        - Describe outcomes, not mechanics. "Clients can now filter invoices by date"
-          not "added a scope to the Invoice model".
-        - Never mention file paths, commit hashes, branch names, or line counts.
-        - Group related commits into one item. Ten commits on one feature is one item.
-        - Set certain=false for any item you inferred from file paths rather than from
-          what the commit message actually stated.
-        - If a commit's message is too vague to describe, put its subject line in
-          `unclear`. Do not invent a plausible description. An omission is recoverable;
-          a confident wrong claim to a client is not.
-    TXT;
-
-    public function __construct(private readonly Client $client) {}
-
-    public function write(string $digest): ClientBrief
+    public function write(string $digest, bool $deep = false): ClientBrief
     {
         $message = $this->client->messages->create(
             maxTokens: 16000,
             messages: [['role' => 'user', 'content' => $digest]],
-            model: Model::CLAUDE_OPUS_5_5,
+            model: Model::CLAUDE_FABLE_5_1,
             outputConfig: [
                 'effort' => 'medium',
                 'format' => [
@@ -41,7 +29,10 @@ class ClaudeBriefWriter implements BriefWriter
                     'schema' => [
                         'type' => 'object',
                         'properties' => [
-                            'headline' => ['type' => 'string'],
+                            'headline' => [
+                                'type' => 'string',
+                                'description' => 'One short line, at most ten words, naming the single most important change. Not a summary of the items.',
+                            ],
                             'items' => [
                                 'type' => 'array',
                                 'items' => [
@@ -50,7 +41,10 @@ class ClaudeBriefWriter implements BriefWriter
                                         'title' => ['type' => 'string'],
                                         'detail' => ['type' => 'string'],
                                         'area' => ['type' => 'string'],
-                                        'certain' => ['type' => 'boolean'],
+                                        'certain' => [
+                                            'type' => 'boolean',
+                                            'description' => 'False if you inferred this from the file areas rather than the commit message, if the message claims a capability you cannot confirm was finished, or if you added detail the message did not state.',
+                                        ],
                                     ],
                                     'required' => ['title', 'detail', 'area', 'certain'],
                                     'additionalProperties' => false,
@@ -66,7 +60,7 @@ class ClaudeBriefWriter implements BriefWriter
             system: [
                 [
                     'type' => 'text',
-                    'text' => self::RULES,
+                    'text' => $this->prompt->build($deep),
                     'cacheControl' => ['type' => 'ephemeral'],
                 ],
             ],
