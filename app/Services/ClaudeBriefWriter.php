@@ -13,7 +13,7 @@ use Illuminate\Support\Collection;
 final readonly class ClaudeBriefWriter implements BriefWriter
 {
     public function __construct(
-        private Client      $client,
+        private Client $client,
         private BriefPrompt $prompt,
     ) {}
 

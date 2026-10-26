@@ -71,7 +71,7 @@ class BriefCommand extends Command
             return self::FAILURE;
         }
 
-        if(! $settings->exists()) {
+        if (! $settings->exists()) {
             $this->error('Setup not complete. Please run `shiplog setup` to configure your settings.');
 
             return self::FAILURE;

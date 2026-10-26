@@ -27,8 +27,7 @@ class PurgeCommand extends Command
      */
     public function handle(
         Settings $settings
-    )
-    {
+    ) {
         $this->info('Purging setup data...');
 
         $path = $settings->path();
