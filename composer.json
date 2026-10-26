@@ -1,18 +1,18 @@
 {
-    "name": "laravel-zero/laravel-zero",
-    "description": "The Laravel Zero Framework.",
-    "keywords": ["framework", "laravel", "laravel zero", "console", "cli"],
-    "homepage": "https://laravel-zero.com",
-    "type": "project",
+    "name": "kachkolasa/shiplog",
+    "description": "Turn a week of git history into a status update you can send a client.",
+    "keywords": ["cli", "git", "changelog", "release-notes", "claude", "anthropic"],
+    "homepage": "https://github.com/kachkolasa/shiplog",
+    "type": "library",
     "license": "MIT",
     "support": {
-        "issues": "https://github.com/laravel-zero/laravel-zero/issues",
-        "source": "https://github.com/laravel-zero/laravel-zero"
+        "issues": "https://github.com/kachkolasa/shiplog/issues",
+        "source": "https://github.com/kachkolasa/shiplog"
     },
     "authors": [
         {
-            "name": "Nuno Maduro",
-            "email": "enunomaduro@gmail.com"
+            "name": "Kachkol",
+            "email": "kachkolasa@gmail.com"
         }
     ],
     "require": {

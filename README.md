@@ -1,42 +1,181 @@
-<p align="center">
-    <img title="Laravel Zero" height="100" src="https://raw.githubusercontent.com/laravel-zero/docs/master/images/logo/laravel-zero-readme.png" alt="Laravel Zero Logo" />
-</p>
+# shiplog
 
-<p align="center">
-  <a href="https://github.com/laravel-zero/framework/actions"><img src="https://github.com/laravel-zero/laravel-zero/actions/workflows/tests.yml/badge.svg" alt="Build Status" /></a>
-  <a href="https://packagist.org/packages/laravel-zero/framework"><img src="https://img.shields.io/packagist/dt/laravel-zero/framework.svg" alt="Total Downloads" /></a>
-  <a href="https://packagist.org/packages/laravel-zero/framework"><img src="https://img.shields.io/packagist/v/laravel-zero/framework.svg?label=stable" alt="Latest Stable Version" /></a>
-  <a href="https://packagist.org/packages/laravel-zero/framework"><img src="https://img.shields.io/packagist/l/laravel-zero/framework.svg" alt="License" /></a>
-  <a href="https://youtube.com/@nunomaduro?sub_confirmation=1"><img alt="YouTube Channel Subscribers" src="https://img.shields.io/youtube/channel/subscribers/UCO_hYZF2gb_CyG5sA7ArlGg?style=flat&label=youtube&color=brightgreen"></a>
-</p>
+Turn a week of git history into a status update you can send a client.
 
-Laravel Zero was created by [Nuno Maduro](https://github.com/nunomaduro) and [Owen Voke](https://github.com/owenvoke), and is a micro-framework that provides an elegant starting point for your console application. It is an **unofficial** and customized version of Laravel, optimized for building command-line applications.
+`shiplog` reads the commits in a date range, sends them to Claude along with the
+code that actually changed, and prints a short brief written for a human who
+does not read diffs.
 
-- Built on top of the [Laravel](https://laravel.com) components.
-- Optional installation of Laravel [Eloquent](https://laravel-zero.com/docs/database/), Laravel [Logging](https://laravel-zero.com/docs/logging/) and many others.
-- Supports interactive [menus](https://laravel-zero.com/docs/build-interactive-menus/) and [desktop notifications](https://laravel-zero.com/docs/send-desktop-notifications/) on Linux, Windows & MacOS.
-- Ships with a [Scheduler](https://laravel-zero.com/docs/task-scheduling/) and  a [Standalone Compiler](https://laravel-zero.com/docs/distribute-as-a-single-executable-binary/).
-- Integration with [Collision](https://github.com/nunomaduro/collision) - Beautiful error reporting
-- Follow the creator Nuno Maduro:
-    - YouTube: **[youtube.com/@nunomaduro](https://www.youtube.com/@nunomaduro)** — Videos every weekday
-    - Twitch: **[twitch.tv/enunomaduro](https://www.twitch.tv/enunomaduro)** — Streams (almost) every weekday
-    - Twitter / X: **[x.com/enunomaduro](https://x.com/enunomaduro)**
-    - LinkedIn: **[linkedin.com/in/nunomaduro](https://www.linkedin.com/in/nunomaduro)**
-    - Instagram: **[instagram.com/enunomaduro](https://www.instagram.com/enunomaduro)**
-    - Tiktok: **[tiktok.com/@enunomaduro](https://www.tiktok.com/@enunomaduro)**
+```
+ Shiplog
 
-------
+ Claude now writes client-ready briefs from your git history
+ Oct 19, 2026 – Oct 26, 2026
 
-## Documentation
+ ▪ Commit history collection for a date range
+    The brief command now reads the repository's commit history between a
+    configurable start and end date, filtered to the current author by default
+    with an --all-authors switch to include everyone.
 
-For full documentation, visit [laravel-zero.com](https://laravel-zero.com/).
+ ▪ Setup command with persisted preferences and credential check
+    A new setup command asks for audience, tone and a maximum item count, and
+    saves them to a per-user config file with locked-down permissions.
 
-## Support the development
-**Do you like this project? Support it by donating**
+ ▪ Commit digest and terminal rendering (unverified)
+    Commits are condensed into a compact digest for the model and the resulting
+    brief is rendered in the terminal. We could not verify the finished scope of
+    this work from the commit itself.
 
-- PayPal: [Donate](https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=66BYDWAT92N6L)
-- Patreon: [Donate](https://www.patreon.com/nunomaduro)
+ Too vague to describe — tighten these commit messages:
+    command
 
-## License
+ 41,992 tokens in, 1,977 out — about $0.52 (claude-fable-5-1)
+```
 
-Laravel Zero is an open-source software licensed under the MIT license.
+## Requirements
+
+- PHP 8.3 or newer
+- git
+- An Anthropic API credential
+
+## Install
+
+```bash
+git clone <this repo> shiplog
+cd shiplog
+composer install
+./shiplog setup
+```
+
+To build a single-file executable you can put on your `PATH`:
+
+```bash
+./shiplog app:build
+```
+
+## Credentials
+
+**shiplog never stores your API key.** It reads whichever credential the
+Anthropic SDK already resolves, so there is only ever one copy of your key on
+the machine. Set one up either way:
+
+```bash
+ant auth login                      # stores a profile the SDK reads automatically
+export ANTHROPIC_API_KEY=sk-ant-... # or put this in your shell profile
+```
+
+`shiplog setup` reports which source it found, by name, and never prints the
+value.
+
+## Usage
+
+```bash
+shiplog brief                              # the last 7 days, your commits
+shiplog brief --since="last monday"
+shiplog brief --since=2026-10-01 --until=2026-10-31
+shiplog brief --all-authors                # everyone, not just you
+shiplog brief --audience=technical         # override the saved settings
+shiplog brief --surface                    # skip the diffs: much cheaper
+```
+
+Run it from inside the repository you want a brief for.
+
+### Options
+
+| Option | Default | What it does |
+|---|---|---|
+| `--since` | `7 days ago` | Start of the range. Anything `strtotime` understands. |
+| `--until` | `now` | End of the range. A bare date is extended to end-of-day. |
+| `--all-authors` | off | Include everyone's commits, not just yours. |
+| `--deep` | **on** | Send the code diffs so claims can be checked against what changed. |
+| `--surface` | off | Skip the diffs. Much cheaper and faster, but claims cannot be checked. |
+| `--audience` | from config | `technical` or `non-technical`. |
+| `--tone` | from config | `first-person` ("We added…") or `neutral` ("… is now available"). |
+| `--max-items` | from config | 1–20. Work over the cap is merged, never dropped. |
+
+## What gets sent
+
+In the default deep mode, shiplog sends **the actual code diffs** for the
+commits in range. That is the point: it is what lets the brief contradict a
+commit message that overstates what was built.
+
+Excluded from both the summary and the diffs:
+
+```
+composer.lock   package-lock.json   yarn.lock   pnpm-lock.yaml
+vendor/         node_modules/
+```
+
+Commit hashes, file paths and line counts are never repeated in the output.
+
+If you cannot send client code to a third party, use `--surface`, or set
+`deep: false` in your config — see the accuracy note below before you do.
+
+## Cost
+
+shiplog spends your money on every run and prints what it spent.
+
+| Mode | This repo, one week | Why |
+|---|---|---|
+| `--surface` | a fraction of a cent | ~180 tokens: subjects, directories and line counts |
+| default (deep) | about $0.52 | ~42,000 tokens: the above plus the diffs |
+
+**This scales with how much you commit.** A quiet week costs less, a busy one
+more. Diffs are included newest-first up to a size budget; commits past the
+budget are marked as having no diff, and anything written about them is flagged
+as unverified rather than silently guessed at.
+
+## Configuration
+
+`shiplog setup` writes `~/.config/shiplog/config.json` (or
+`$XDG_CONFIG_HOME/shiplog/`), mode `0600`:
+
+```json
+{
+    "audience": "non-technical",
+    "tone": "first-person",
+    "max_items": 6,
+    "deep": true
+}
+```
+
+```bash
+shiplog setup                      # interactive
+shiplog setup --audience=technical --tone=neutral --max-items=4 --deep=true
+shiplog setup:info                 # show the current configuration
+shiplog setup:purge                # delete it
+```
+
+No credential is ever written to this file.
+
+## Accuracy, and its limits
+
+Two markers in the output exist because a brief that reads well but is wrong is
+worse than no brief at all:
+
+- **`(unverified)`** — the item could not be checked against the code. Either it
+  came from a commit whose diff did not fit the budget, or the commit message
+  claims something the diff does not show.
+- **"Too vague to describe"** — the commit message carried no usable
+  information. shiplog lists the subject rather than inventing a description.
+
+A one-word commit message produces nothing useful, and in `--surface` mode a
+commit message that *overstates* what was built will be repeated as fact,
+because there is nothing to contradict it. Deep mode exists for exactly that
+case. Read the brief before you send it.
+
+## Development
+
+```bash
+vendor/bin/pest          # 96 tests, no network, no API key needed
+vendor/bin/pint          # code style
+```
+
+The one class that calls the API sits behind the `BriefWriter` interface, and
+the test suite binds a fake in its place — so the suite never makes a request
+and never needs a credential.
+
+## Notes
+
+- The model is currently fixed at `claude-fable-5-1` and is not yet configurable.
+- Merge commits are excluded.
